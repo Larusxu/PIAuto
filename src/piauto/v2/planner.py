@@ -38,7 +38,16 @@ def choose_cascade(*,target:Loop,validated:Iterable[Loop],
             raise RuntimeError(f"no validated test capability for {loop.value}: {axes}")
         e=envelopes[loop]
         safe_step=min(e.max_step*.2,max(e.max_step*.05,1e-9))
-        spec=Experiment(loop=loop,axis=axis,dq_mode=dq_mode,start=0.,
+        # Prefer zero when legal; otherwise plan about the actual safe interval.
+        if e.min_position<=0<=e.max_position:
+            start=0.
+        elif abs(e.min_position)!=float("inf") and abs(e.max_position)!=float("inf"):
+            start=(e.min_position+e.max_position)*.5
+        else:
+            start=e.min_position if e.min_position>0 else e.max_position
+        if start+safe_step>e.max_position:
+            safe_step=-safe_step
+        spec=Experiment(loop=loop,axis=axis,dq_mode=dq_mode,start=start,
                         step=safe_step,duration_s=min(duration_s,e.max_duration_s))
         e.validate(spec)
         selected.append(TuningStage(spec,e,max_rounds=max_rounds))
