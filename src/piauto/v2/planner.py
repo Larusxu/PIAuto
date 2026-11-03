@@ -33,9 +33,11 @@ def choose_cascade(*,target:Loop,validated:Iterable[Loop],
             continue
         if loop not in envelopes:
             raise ValueError(f"missing safety envelope for {loop.value}")
-        axes=("d","q") if loop==Loop.CURRENT and dq_mode==DQMode.SHARED else (axis,)
-        if not all(capabilities.supports(loop,a) for a in axes):
-            raise RuntimeError(f"no validated test capability for {loop.value}: {axes}")
+        checked_axes=("d","q") if loop==Loop.CURRENT and dq_mode==DQMode.SHARED else (
+            ("d","q") if loop==Loop.CURRENT and dq_mode==DQMode.INDEPENDENT else (axis,))
+        axes=("d","q") if loop==Loop.CURRENT and dq_mode==DQMode.INDEPENDENT else (axis,)
+        if not all(capabilities.supports(loop,a) for a in checked_axes):
+            raise RuntimeError(f"no validated test capability for {loop.value}: {checked_axes}")
         e=envelopes[loop]
         safe_step=min(e.max_step*.2,max(e.max_step*.05,1e-9))
         # Prefer zero when legal; otherwise plan about the actual safe interval.
