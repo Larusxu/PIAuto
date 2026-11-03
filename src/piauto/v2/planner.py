@@ -47,10 +47,11 @@ def choose_cascade(*,target:Loop,validated:Iterable[Loop],
             start=e.min_position if e.min_position>0 else e.max_position
         if start+safe_step>e.max_position:
             safe_step=-safe_step
-        spec=Experiment(loop=loop,axis=axis,dq_mode=dq_mode,start=start,
-                        step=safe_step,duration_s=min(duration_s,e.max_duration_s))
-        e.validate(spec)
-        selected.append(TuningStage(spec,e,max_rounds=max_rounds))
+        for selected_axis in axes:
+            spec=Experiment(loop=loop,axis=selected_axis,dq_mode=dq_mode,start=start,
+                            step=safe_step,duration_s=min(duration_s,e.max_duration_s))
+            e.validate(spec)
+            selected.append(TuningStage(spec,e,max_rounds=max_rounds))
     if not selected:
         return AutoPlan(tuple(),tuple(skipped),"all requested stages already validated")
     return AutoPlan(tuple(selected),tuple(skipped),
