@@ -38,7 +38,7 @@ class FakePort:
 
 def test_crc_standard_modbus_example():
     request=bytes.fromhex("01 04 00 00 00 03")
-    assert modbus_crc(request)==0x0B00
+    assert modbus_crc(request)==0x0BB0
 
 def test_status_read_only_and_motor_routing():
     port=FakePort()
