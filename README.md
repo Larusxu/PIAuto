@@ -111,3 +111,16 @@ piauto-v2 full-mock --approve --dq independent --max-rounds 2
 **部署边界**：V1 和 V2 的软件方法、Mock 端到端测试可用；HPM/TMC 实时通信、PI 定点换算、安全使能/停止实测以及正式宿主上位机集成，依旧需要真实设备代码和硬件验证。逐项见 [开发进度表](开发进度表.md)。
 
 - d/q 独立模式自动整定：`piauto-v2 full-mock --approve --dq independent --max-rounds 1`；依次整定 d 和 q，而不只选择一个轴。共享模式用一个电流阶段，两个轴都必须验证。
+
+## TeslaHand UART1 真实协议只读监控
+
+来源：私有 TSLHand `application/TeslaHand/common/Modbus/MODBUS_PROTOCOL.md`（2026-10-29）。协议为 460800 8N1、Modbus RTU 从机 1、输入寄存器 FC04。**当前此协议不提供电机 PI 写入或 RTMI 数据流**。
+
+```bash
+python -m pip install -e ".[hardware]"
+piauto-monitor --port COM10 --slave 1
+```
+
+该命令只发送 FC04 读请求、校验 Modbus CRC、0x5448 标识、协议版本、16 路路由和电源快照一致性。不执行设备供电、初始化、电机使能、找零或写寄存器。供电状态 1 仅代表 MCU 软件 EN 与 CONFIG 状态，**不代表实测 5V**；快照序号变化会报告数据可能不一致。
+
+底层实现：`src/piauto/adapters/teslahand_modbus.py`，相关测试 `tests/test_teslahand_modbus.py`。这是实际协议下的**监控/诊断组件**，不等于支持 V1/V2 真实自动整定。真实整定需要 HPM 固件明确提供安全的 PI 读写、实验执行、RTMI 时间同步和独立停止接口。
