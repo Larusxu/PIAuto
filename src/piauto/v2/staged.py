@@ -4,7 +4,7 @@ capabilities. Skipping prevalidated inner loops is allowed by the caller.
 """
 from dataclasses import dataclass
 from typing import Sequence
-from ..contracts import Experiment,SafetyEnvelope,Loop
+from ..contracts import Experiment,SafetyEnvelope,Loop,DQMode
 from ..adapters.base import MotorAdapter
 from .workflow import V2AutoTuner,AutoResult
 
