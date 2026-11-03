@@ -67,3 +67,29 @@ pytest -q
 - `piauto.v2.excitation.generate_waveform`：离线预生成正弦 / Chirp 测试信号；不会通过 UART 或 RS485 发送。**采样率、时钟和 MCU 停止能力未验收前，禁止将其直接用于实物运动。**
 - Streamlit 的 V2 页新增 CSV 闭环 Bode 曲线（增益/相位/相干度）与电流→速度对象辨识工具，明确标注物理 PI 与寄存器值的区别。
 - 当前本地 Python 核心测试：`16 passed`。真实联机部分请查看 [开发进度表](开发进度表.md) 中的未完成项。
+
+## 新增：流式适配契约与模型辅助 V2
+
+- `piauto.adapters.streaming.SampleBatch` 是芯片无关的遥测批次；包含设备/电机/试验 ID、设备时间戳、信号数组、单位、丢帧数和时间戳来源。
+- `validate_batch(batch, required_signals)` 检查时间戳严格递增、数据长度一致、缺失信号和丢帧比例。
+- `StreamingMotorAdapter` 是可选 Protocol，定义 prepare/start/read/stop 实验、PI 应用及读回验证。它不替代现有 `MotorAdapter`，旧 Mock/V1 仍兼容。
+- `piauto.v2.analyze_and_optimize_velocity` 串联速度对象辨识和模型 PI 有界优化。CSV/数据必须来自经确认的电流/转矩激励；结果只是连续域候选，**不自动写设备**。
+- 新增测试：`pytest -q tests/test_streaming_contract.py`。
+
+示例：
+
+```python
+from piauto.adapters.streaming import SampleBatch, validate_batch
+from piauto.v2 import analyze_and_optimize_velocity
+from piauto.v2.sysid import PhysicalPI
+
+quality = validate_batch(batch, ["target", "actual"])
+result = analyze_and_optimize_velocity(
+    timestamp_s, current_command, speed_actual,
+    baseline=PhysicalPI(kp=0.2, ki=4.0, lambda_s=0.5),
+    excitation_confirmed=True,
+)
+print(result.optimization.candidate)
+```
+
+注意：这里的物理 Kp/Ki 需要由具体驱动器适配器结合其采样周期、归一化和量化规则转换。不能直接写入 TMC6460 原始寄存器。
