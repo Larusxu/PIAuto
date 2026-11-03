@@ -29,8 +29,25 @@ def main(argv=None):
     staged.add_argument("--dq",choices=["shared","independent"],default="shared")
     staged.add_argument("--approve",action="store_true")
     staged.add_argument("--max-rounds",type=int,default=2)
+    model=sub.add_parser("full-mock",help="model-driven all-layer current/velocity/position mock, no hardware")
+    model.add_argument("--approve",action="store_true")
+    model.add_argument("--dq",choices=["shared","independent"],default="shared")
+    model.add_argument("--max-rounds",type=int,default=2)
     a=p.parse_args(argv)
     try:
+        if a.command=="full-mock":
+            if not a.approve:raise ValueError("explicit --approve required")
+            from .full_auto import V2ModelAutoTuner
+            from .staged import TuningStage
+            from ..contracts import Experiment,SafetyEnvelope,Loop,DQMode
+            from ..adapters.model_mock import ModelMockMotorAdapter
+            safety=SafetyEnvelope(5,100,2,6,-10,10)
+            stages=[TuningStage(Experiment(loop=loop,dq_mode=DQMode(a.dq)),safety,a.max_rounds)
+                    for loop in (Loop.CURRENT,Loop.VELOCITY,Loop.POSITION)]
+            result=V2ModelAutoTuner(ModelMockMotorAdapter()).run(stages,authorized=True)
+            from ..reporting import _jsonable
+            print(json.dumps(_jsonable(result),ensure_ascii=False,indent=2,allow_nan=False))
+            return 0
         if a.command=="staged-mock":
             if not a.approve:raise ValueError("requires --approve for mock auto tuning")
             from .staged import TuningStage,V2StagedTuner
