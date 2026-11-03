@@ -12,5 +12,6 @@ ui = ["streamlit>=1.35", "pandas>=2.0", "matplotlib>=3.7"]
 test = ["pytest>=8"]
 [project.scripts]
 piauto = "piauto.cli:main"
+piauto-v2 = "piauto.v2.cli:main"
 [tool.setuptools.packages.find]
 where = ["src"]
