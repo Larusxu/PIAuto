@@ -66,7 +66,7 @@ pytest -q
 - `piauto.v2.staged.V2StagedTuner`：真实设备未来可按每层不同单位、安全边界创建 `TuningStage`；异常后回退整次会话的原始 PI。支持只选位置环，但必须确认内环已经验证。
 - `piauto.v2.excitation.generate_waveform`：离线预生成正弦 / Chirp 测试信号；不会通过 UART 或 RS485 发送。**采样率、时钟和 MCU 停止能力未验收前，禁止将其直接用于实物运动。**
 - Streamlit 的 V2 页新增 CSV 闭环 Bode 曲线（增益/相位/相干度）与电流→速度对象辨识工具，明确标注物理 PI 与寄存器值的区别。
-- GitHub Actions 软件测试：`41 passed`。真实联机部分请查看 [开发进度表](开发进度表.md) 中的未完成项。
+- GitHub Actions 软件测试：`43 passed`。真实联机部分请查看 [开发进度表](开发进度表.md) 中的未完成项。
 
 ## 新增：流式适配契约与模型辅助 V2
 
@@ -109,3 +109,5 @@ piauto-v2 full-mock --approve --dq independent --max-rounds 2
 统一结果：`piauto.reporting.TuningSessionReport` 支持 JSON；`trace_csv` 导出时间序列 CSV。自动实验计划：`piauto.v2.planner.choose_cascade` 和 `choose_chirp`。
 
 **部署边界**：V1 和 V2 的软件方法、Mock 端到端测试可用；HPM/TMC 实时通信、PI 定点换算、安全使能/停止实测以及正式宿主上位机集成，依旧需要真实设备代码和硬件验证。逐项见 [开发进度表](开发进度表.md)。
+
+- d/q 独立模式自动整定：`piauto-v2 full-mock --approve --dq independent --max-rounds 1`；依次整定 d 和 q，而不只选择一个轴。共享模式用一个电流阶段，两个轴都必须验证。
