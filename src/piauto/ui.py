@@ -27,6 +27,7 @@ def run():
             if mode==DQMode.INDEPENDENT:axis=st.radio("电流轴",["d","q"],horizontal=True)
         step=st.number_input("安全测试阶跃幅度（Mock）",min_value=.1,max_value=5.,value=1.,step=.1)
         duration=st.slider("测试持续时间（s）",1.0,6.0,2.0,0.5)
+        v2_strategy = st.radio("V2 整定策略",["模型驱动三层","固定小范围搜索"],key="v2_strategy") if version.startswith("V2") else None
         run_now=st.button("运行模拟整定",type="primary")
     if "history" not in st.session_state:st.session_state.history=[]
     if "pending_v1" not in st.session_state:st.session_state.pending_v1=None
@@ -41,8 +42,19 @@ def run():
             result={"version":"V1","proposal":asdict(proposal),"trace":trace}
             st.session_state.pending_v1=workflow
         else:
-            trace=adapter.run_step(spec,safety)
-            output=V2AutoTuner(adapter).autotune(spec,safety,authorized=True)
+            if v2_strategy=="模型驱动三层":
+                from piauto.adapters.model_mock import ModelMockMotorAdapter
+                from piauto.v2.full_auto import V2ModelAutoTuner
+                from piauto.v2.staged import TuningStage
+                adapter=ModelMockMotorAdapter()
+                trace=adapter.run_step(spec,safety)
+                stages=[TuningStage(Experiment(loop=L,dq_mode=mode,step=step,duration_s=duration),
+                                    safety,max_rounds=2)
+                        for L in (Loop.CURRENT,Loop.VELOCITY,Loop.POSITION)]
+                output=V2ModelAutoTuner(adapter).run(stages,authorized=True)
+            else:
+                trace=adapter.run_step(spec,safety)
+                output=V2AutoTuner(adapter).autotune(spec,safety,authorized=True)
             result={"version":"V2","result":asdict(output),"trace":trace}
         st.session_state.history.append(result)
     with b:
