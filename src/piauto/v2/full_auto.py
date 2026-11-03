@@ -103,8 +103,12 @@ class V2ModelAutoTuner:
         settings.validate()
         order={Loop.CURRENT:0,Loop.VELOCITY:1,Loop.POSITION:2}
         indices=[order[x.experiment.loop] for x in stages]
-        if indices!=sorted(indices) or len(set(indices))!=len(indices):
-            raise ValueError("stages must be current->velocity->position without duplicates")
+        if indices!=sorted(indices):
+            raise ValueError("stages must be ordered current->velocity->position")
+        keys=[(st.experiment.loop,st.experiment.axis if st.experiment.loop==Loop.CURRENT
+               and st.experiment.dq_mode==DQMode.INDEPENDENT else "*") for st in stages]
+        if len(set(keys))!=len(keys):
+            raise ValueError("duplicate tuning loop or current axis")
         if not isinstance(self.adapter,IdentifiedMotorAdapter):
             raise RuntimeError("adapter lacks model evidence, conversion or readback hooks")
         cap=self.adapter.capabilities()
