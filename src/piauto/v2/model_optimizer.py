@@ -55,8 +55,11 @@ def optimize_velocity_pi(plant: VelocityPlant, baseline: PhysicalPI, *,
         raise ValueError("only a validated positive-gain plant can be optimized")
     if max_gain_factor <= 1 or max_gain_factor > 3:
         raise ValueError("max_gain_factor must be in (1, 3]")
-    horizon = horizon_s or max(5 * plant.tau_s, 0.2)
-    if horizon <= 0:
+    # Slow poles from a modest baseline PI need a substantially longer window
+    # than plant tau. Otherwise a stable regulator is falsely rejected.
+    estimated_slow_time=(1+plant.gain*baseline.kp)/(plant.gain*max(baseline.ki,1e-8))
+    horizon = horizon_s or min(90.,max(8*plant.tau_s,8*estimated_slow_time,0.5))
+    if not np.isfinite(horizon) or horizon <= 0:
         raise ValueError("horizon must be positive")
     base_cost, _ = _cost(plant, baseline.kp, baseline.ki, horizon)
     if not np.isfinite(base_cost) or base_cost >= 1e11:
@@ -67,7 +70,7 @@ def optimize_velocity_pi(plant: VelocityPlant, baseline: PhysicalPI, *,
                       [baseline.kp, baseline.ki], method="L-BFGS-B", bounds=bounds,
                       options={"maxiter": 100, "ftol": 1e-8})
     cost, detail = _cost(plant, float(result.x[0]), float(result.x[1]), horizon)
-    if not result.success or detail is None or cost >= base_cost:
+    if detail is None or cost >= base_cost - 1e-6:
         raise ValueError("no better bounded model candidate found")
     _, _, overshoot, settling = detail
     return ModelOptimization(PhysicalPI(float(result.x[0]), float(result.x[1]),
