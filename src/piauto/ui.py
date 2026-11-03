@@ -78,4 +78,8 @@ def run():
         else:
             st.info("选择控制环并运行 Mock 整定。设备实测接口尚未接入。")
 
+    if version.startswith("V2"):
+        from piauto.v2.ui import render_offline_v2
+        render_offline_v2()
+
 if __name__=="__main__":run()
