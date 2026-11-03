@@ -48,9 +48,10 @@ def run():
                 from piauto.v2.staged import TuningStage
                 adapter=ModelMockMotorAdapter()
                 trace=adapter.run_step(spec,safety)
-                stages=[TuningStage(Experiment(loop=L,dq_mode=mode,step=step,duration_s=duration),
+                stages=[TuningStage(Experiment(loop=L,axis=A,dq_mode=mode,step=step,duration_s=duration),
                                     safety,max_rounds=2)
-                        for L in (Loop.CURRENT,Loop.VELOCITY,Loop.POSITION)]
+                        for L in (Loop.CURRENT,Loop.VELOCITY,Loop.POSITION)
+                        for A in (("d","q") if L==Loop.CURRENT and mode==DQMode.INDEPENDENT else ("q",))]
                 output=V2ModelAutoTuner(adapter).run(stages,authorized=True)
             else:
                 trace=adapter.run_step(spec,safety)
