@@ -42,8 +42,9 @@ def main(argv=None):
             from ..contracts import Experiment,SafetyEnvelope,Loop,DQMode
             from ..adapters.model_mock import ModelMockMotorAdapter
             safety=SafetyEnvelope(5,100,2,6,-10,10)
-            stages=[TuningStage(Experiment(loop=loop,dq_mode=DQMode(a.dq)),safety,a.max_rounds)
-                    for loop in (Loop.CURRENT,Loop.VELOCITY,Loop.POSITION)]
+            stages=[TuningStage(Experiment(loop=loop,axis=axis,dq_mode=DQMode(a.dq)),safety,a.max_rounds)
+                    for loop in (Loop.CURRENT,Loop.VELOCITY,Loop.POSITION)
+                    for axis in (("d","q") if loop==Loop.CURRENT and a.dq=="independent" else ("q",))]
             result=V2ModelAutoTuner(ModelMockMotorAdapter()).run(stages,authorized=True)
             from ..reporting import _jsonable
             print(json.dumps(_jsonable(result),ensure_ascii=False,indent=2,allow_nan=False))
@@ -54,8 +55,9 @@ def main(argv=None):
             from ..contracts import Experiment,SafetyEnvelope,Loop,DQMode
             from ..adapters.mock import MockMotorAdapter
             safety=SafetyEnvelope(5,100,2,6,-10,10)
-            stages=[TuningStage(Experiment(loop=loop,dq_mode=DQMode(a.dq)),safety,a.max_rounds)
-                    for loop in (Loop.CURRENT,Loop.VELOCITY,Loop.POSITION)]
+            stages=[TuningStage(Experiment(loop=loop,axis=axis,dq_mode=DQMode(a.dq)),safety,a.max_rounds)
+                    for loop in (Loop.CURRENT,Loop.VELOCITY,Loop.POSITION)
+                    for axis in (("d","q") if loop==Loop.CURRENT and a.dq=="independent" else ("q",))]
             result=V2StagedTuner(MockMotorAdapter()).autotune(stages,authorized=True)
             print(json.dumps(asdict(result),ensure_ascii=False,indent=2,default=str))
             return 0
