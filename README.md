@@ -39,3 +39,22 @@ CSV 列：`timestamp_s,target,actual`；命令触发时刻默认 `0s`，可在 `
 - https://github.com/simplefoc/Arduino-FOC
 
 详细实施边界见 `docs/实施方案.md`，界面建议见 `docs/界面方案.md`。
+
+
+## V2 独立离线工具（不依赖 V1）
+
+```bash
+pip install -e '.[test]'
+piauto-v2 sysid-velocity --csv current_step.csv --confirmed-current-mode --lambda-s 0.5
+piauto-v2 bode --csv position_chirp.csv --min-coherence 0.8
+pytest -q
+```
+
+- `sysid-velocity` CSV：`timestamp_s,current_command,speed_actual`；要求**确认为当前电流/转矩控制激励**，否则拒绝拟合。拟合使用 SciPy `least_squares` 求一阶速度对象，基于 IMC 返回**物理连续域** PI 初值；这些数字**不是** TMC6460 的定点寄存器值。
+- `bode` CSV：`timestamp_s,target,actual`；输出闭环增益、相位、相干度，不能直接宣称开环稳定裕度。频响按 foc-sysid 的 `csd/welch/coherence` 思路实现。
+- `piauto.v2.excitation.generate_waveform`：按 ktune 的 Sine/Chirp 实验形式离线规划信号，并进行位置、速度、采样率的初步检查；**不负责在 HPM 上定时执行**。
+- `piauto v2-mock --approve`：独立的 V2 Mock 自动候选循环，每轮测试后根据实测指标决定接受或回滚。共享 d/q 时两轴都要验证。
+
+根目录的 [开发进度表](开发进度表.md) 记录已完成事项和真实硬件尚未实现的限制；[原始需求手册](原始需求手册.md) 和 [上位机界面原始需求](上位机界面原始需求.md) 保留原始要求。
+
+**尚未完成的不是文档功能**：HPM6E8Y 实际 RTMI/RS485 帧接口、采样同步及安全停机验收、真实电机电流环激励、TMC 寄存器物理 PI 量化，以及实板端到端 V2 全自动验收。没有硬件协议时这些工作不得以 Mock 代替。
