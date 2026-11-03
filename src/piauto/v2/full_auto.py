@@ -125,6 +125,7 @@ class V2ModelAutoTuner:
                 baseline=self.adapter.read_pi()
                 base_score,base_metrics=_measure(self.adapter,spec,stage.safety,axes)
                 if not np.isfinite(base_score):raise RuntimeError("unsettled baseline response")
+                starting_score=float(base_score)
                 proposal=_plan(self.adapter,stage,settings)
                 factors=np.linspace(.25,1.,stage.max_rounds)
                 reason="no validated improvement"
@@ -165,8 +166,8 @@ class V2ModelAutoTuner:
                         self.adapter.safe_stop()
                         self.adapter.restore(current)
                 reports.append(StageReport(spec.loop.value,tuple(axes),proposal.method,
-                              float(max(0.,base_score)),float(base_score),did_accept,
-                              len(factors),proposal.suggested,reason))
+                              starting_score,float(base_score),did_accept,
+                              trials,proposal.suggested,reason))
             return FullAutoReport("completed",tuple(reports),trials,accepted)
         except BaseException:
             self.adapter.safe_stop()
