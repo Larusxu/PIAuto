@@ -9,11 +9,11 @@ import numpy as np
 def run():
     import streamlit as st
     import pandas as pd
-    from .adapters.mock import MockMotorAdapter
-    from .contracts import Loop,DQMode,Experiment,SafetyEnvelope
-    from .v1 import V1SemiAutoTuner
-    from .v2 import V2AutoTuner
-    from .metrics import measure_step
+    from piauto.adapters.mock import MockMotorAdapter
+    from piauto.contracts import Loop,DQMode,Experiment,SafetyEnvelope
+    from piauto.v1 import V1SemiAutoTuner
+    from piauto.v2 import V2AutoTuner
+    from piauto.metrics import measure_step
     st.set_page_config(page_title="PIAuto · PI 整定",layout="wide")
     st.title("PI 整定")
     st.caption("独立演示：Mock 数据，不写真实芯片，不加载默认 PI。后续由上位机集成服务接口。")
@@ -29,6 +29,7 @@ def run():
         duration=st.slider("测试持续时间（s）",1.0,6.0,2.0,0.5)
         run_now=st.button("运行模拟整定",type="primary")
     if "history" not in st.session_state:st.session_state.history=[]
+    if "pending_v1" not in st.session_state:st.session_state.pending_v1=None
     if run_now:
         adapter=MockMotorAdapter()
         spec=Experiment(loop=loop,axis=axis,dq_mode=mode,step=step,duration_s=duration)
@@ -38,6 +39,7 @@ def run():
             proposal=workflow.analyze_and_propose(spec,safety)
             trace=workflow.baseline_trace
             result={"version":"V1","proposal":asdict(proposal),"trace":trace}
+            st.session_state.pending_v1=workflow
         else:
             trace=adapter.run_step(spec,safety)
             output=V2AutoTuner(adapter).autotune(spec,safety,authorized=True)
@@ -58,6 +60,20 @@ def run():
                 display={k:v for k,v in result.items() if k!="trace"}
                 st.json(display)
             st.download_button("导出曲线 CSV",df.to_csv(index_label="timestamp_s"),"response.csv","text/csv")
+            if result["version"] == "V1" and st.session_state.pending_v1 is not None:
+                st.warning("候选 PI 仅为经验性小范围试调建议，须进行独立验证。以下操作只作用于 Mock。")
+                left,right=st.columns(2)
+                with left:
+                    if st.button("批准试用并验证（仅 Mock）"):
+                        try:
+                            verification=st.session_state.pending_v1.verify_approved_candidate(approved=True)
+                            st.session_state.last_verification=asdict(verification)
+                        except Exception as ex:st.error(str(ex))
+                with right:
+                    if st.button("恢复基线 PI（仅 Mock）"):
+                        st.session_state.pending_v1.rollback()
+                        st.session_state.last_verification={"state":"rolled_back"}
+                if "last_verification" in st.session_state:st.json(st.session_state.last_verification)
             st.caption("Mock 仅验证页面和算法状态机，不代表 TMC6460 硬件整定已经完成。")
         else:
             st.info("选择控制环并运行 Mock 整定。设备实测接口尚未接入。")

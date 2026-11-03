@@ -16,7 +16,7 @@ piauto v2-mock --approve
 piauto v1-csv --csv measured.csv
 ```
 
-UI Mock 版：`pip install -e '.[ui]'`，然后 `streamlit run src/piauto/ui.py`（如果作为模块运行受限，可在上位机中导入 `piauto.ui.run()`）。
+UI Mock 版：`pip install -e '.[ui]'`，然后 `streamlit run streamlit_app.py`（如果作为模块运行受限，可在上位机中导入 `piauto.ui.run()`）。
 
 CSV 列：`timestamp_s,target,actual`；命令触发时刻默认 `0s`，可在 `load_csv` 中指定；应包含触发前至少三个样本和足够长的触发后稳定段。目标、实际值需使用同一物理单位。
 

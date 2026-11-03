@@ -45,6 +45,13 @@ class V1SemiAutoTuner:
         metrics=measure_step(trace,spec.settle_band)
         if not metrics.quality.valid:raise ValueError("unreliable step data: "+", ".join(metrics.quality.reasons))
         self.proposal=propose(baseline,spec,metrics)
+        # python-control + SciPy: fit measured CLOSED-loop surrogate for diagnostics.
+        # This is NOT a hardware PI-to-plant model and must not imply a gain prediction.
+        try:
+            from .model_diagnostics import diagnose_step
+            self.model_diagnostic=diagnose_step(trace)
+        except (ImportError, ValueError, RuntimeError, ArithmeticError) as exc:
+            self.model_diagnostic={"available":False,"reason":str(exc)}
         self.baseline_trace=trace
         self._spec,self._safety=spec,safety
         self.state=State.PROPOSED
