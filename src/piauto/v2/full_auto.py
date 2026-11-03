@@ -130,6 +130,7 @@ class V2ModelAutoTuner:
                 factors=np.linspace(.25,1.,stage.max_rounds)
                 reason="no validated improvement"
                 did_accept=False
+                stage_trials=0
                 for alpha in factors:
                     current=self.adapter.read_pi()
                     candidate=current
@@ -151,6 +152,7 @@ class V2ModelAutoTuner:
                     if not self.adapter.verify_written_pi(candidate):
                         raise RuntimeError("PI write readback mismatch")
                     trials+=1
+                    stage_trials+=1
                     try:
                         score,metrics=_measure(self.adapter,spec,stage.safety,axes)
                     except BaseException:
@@ -160,14 +162,15 @@ class V2ModelAutoTuner:
                               all(x.overshoot_percent<=ref.overshoot_percent+.1 and
                                   x.crossings<=ref.crossings for x,ref in zip(metrics,base_metrics)))
                     if improved:
-                        accepted+=1;did_accept=True;base_score=score;base_metrics=metrics
+                        did_accept=True;base_score=score;base_metrics=metrics
                         reason="verified improvement"
                     else:
                         self.adapter.safe_stop()
                         self.adapter.restore(current)
+                if did_accept:accepted+=1
                 reports.append(StageReport(spec.loop.value,tuple(axes),proposal.method,
                               starting_score,float(base_score),did_accept,
-                              trials,proposal.suggested,reason))
+                              stage_trials,proposal.suggested,reason))
             return FullAutoReport("completed",tuple(reports),trials,accepted)
         except BaseException:
             self.adapter.safe_stop()
