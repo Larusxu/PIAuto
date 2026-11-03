@@ -10,8 +10,10 @@ dependencies = ["numpy>=1.24", "scipy>=1.11", "control>=0.10"]
 [project.optional-dependencies]
 ui = ["streamlit>=1.35", "pandas>=2.0", "matplotlib>=3.7"]
 test = ["pytest>=8"]
+hardware = ["pyserial>=3.5"]
 [project.scripts]
 piauto = "piauto.cli:main"
 piauto-v2 = "piauto.v2.cli:main"
+piauto-monitor = "piauto.adapters.teslahand_cli:main"
 [tool.setuptools.packages.find]
 where = ["src"]
