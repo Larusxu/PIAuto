@@ -20,3 +20,6 @@ jobs:
         run: |
           piauto --help
           piauto-v2 --help
+          piauto v1-mock --approve
+          piauto-v2 full-mock --approve --dq shared --max-rounds 1
+          piauto-v2 full-mock --approve --dq independent --max-rounds 1
