@@ -66,7 +66,7 @@ pytest -q
 - `piauto.v2.staged.V2StagedTuner`：真实设备未来可按每层不同单位、安全边界创建 `TuningStage`；异常后回退整次会话的原始 PI。支持只选位置环，但必须确认内环已经验证。
 - `piauto.v2.excitation.generate_waveform`：离线预生成正弦 / Chirp 测试信号；不会通过 UART 或 RS485 发送。**采样率、时钟和 MCU 停止能力未验收前，禁止将其直接用于实物运动。**
 - Streamlit 的 V2 页新增 CSV 闭环 Bode 曲线（增益/相位/相干度）与电流→速度对象辨识工具，明确标注物理 PI 与寄存器值的区别。
-- GitHub Actions 软件测试：`43 passed`。真实联机部分请查看 [开发进度表](开发进度表.md) 中的未完成项。
+- GitHub Actions 软件测试：`47 passed`。真实联机部分请查看 [开发进度表](开发进度表.md) 中的未完成项。
 
 ## 新增：流式适配契约与模型辅助 V2
 
