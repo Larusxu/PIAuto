@@ -4,7 +4,7 @@ capabilities. Skipping prevalidated inner loops is allowed by the caller.
 """
 from dataclasses import dataclass
 from typing import Sequence
-from ..contracts import Experiment,SafetyEnvelope,Loop
+from ..contracts import Experiment,SafetyEnvelope,Loop,DQMode
 from ..adapters.base import MotorAdapter
 from .workflow import V2AutoTuner,AutoResult
 
@@ -28,8 +28,12 @@ class V2StagedTuner:
         if not authorized:raise PermissionError("explicit V2 full-stage authorization required")
         if not stages:raise ValueError("no stages requested")
         order=[_ORDER[s.experiment.loop] for s in stages]
-        if order!=sorted(order) or len(set(order))!=len(order):
-            raise ValueError("stage order must be current -> velocity -> position, without repeats")
+        if order!=sorted(order):
+            raise ValueError("stage order must be current -> velocity -> position")
+        keys=[(st.experiment.loop,st.experiment.axis if st.experiment.loop==Loop.CURRENT and
+               st.experiment.dq_mode==DQMode.INDEPENDENT else "*") for st in stages]
+        if len(set(keys))!=len(keys):
+            raise ValueError("duplicate tuning stage or repeated current axis")
         if self.adapter.faults():raise RuntimeError("hardware faults")
         for stage in stages:
             stage.safety.validate(stage.experiment)

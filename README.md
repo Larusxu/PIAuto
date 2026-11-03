@@ -66,4 +66,48 @@ pytest -q
 - `piauto.v2.staged.V2StagedTuner`：真实设备未来可按每层不同单位、安全边界创建 `TuningStage`；异常后回退整次会话的原始 PI。支持只选位置环，但必须确认内环已经验证。
 - `piauto.v2.excitation.generate_waveform`：离线预生成正弦 / Chirp 测试信号；不会通过 UART 或 RS485 发送。**采样率、时钟和 MCU 停止能力未验收前，禁止将其直接用于实物运动。**
 - Streamlit 的 V2 页新增 CSV 闭环 Bode 曲线（增益/相位/相干度）与电流→速度对象辨识工具，明确标注物理 PI 与寄存器值的区别。
-- 当前本地 Python 核心测试：`16 passed`。真实联机部分请查看 [开发进度表](开发进度表.md) 中的未完成项。
+- GitHub Actions 软件测试：`43 passed`。真实联机部分请查看 [开发进度表](开发进度表.md) 中的未完成项。
+
+## 新增：流式适配契约与模型辅助 V2
+
+- `piauto.adapters.streaming.SampleBatch` 是芯片无关的遥测批次；包含设备/电机/试验 ID、设备时间戳、信号数组、单位、丢帧数和时间戳来源。
+- `validate_batch(batch, required_signals)` 检查时间戳严格递增、数据长度一致、缺失信号和丢帧比例。
+- `StreamingMotorAdapter` 是可选 Protocol，定义 prepare/start/read/stop 实验、PI 应用及读回验证。它不替代现有 `MotorAdapter`，旧 Mock/V1 仍兼容。
+- `piauto.v2.analyze_and_optimize_velocity` 串联速度对象辨识和模型 PI 有界优化。CSV/数据必须来自经确认的电流/转矩激励；结果只是连续域候选，**不自动写设备**。
+- 新增测试：`pytest -q tests/test_streaming_contract.py`。
+
+示例：
+
+```python
+from piauto.adapters.streaming import SampleBatch, validate_batch
+from piauto.v2 import analyze_and_optimize_velocity
+from piauto.v2.sysid import PhysicalPI
+
+quality = validate_batch(batch, ["target", "actual"])
+result = analyze_and_optimize_velocity(
+    timestamp_s, current_command, speed_actual,
+    baseline=PhysicalPI(kp=0.2, ki=4.0, lambda_s=0.5),
+    excitation_confirmed=True,
+)
+print(result.optimization.candidate)
+```
+
+注意：这里的物理 Kp/Ki 需要由具体驱动器适配器结合其采样周期、归一化和量化规则转换。不能直接写入 TMC6460 原始寄存器。
+
+
+## 软件完整整定示例（TMC 未接入时）
+
+```bash
+piauto-v2 full-mock --approve --dq shared --max-rounds 2
+piauto-v2 full-mock --approve --dq independent --max-rounds 2
+```
+
+`full-mock` 与原有 `staged-mock` 不同：它要求每环的**实际控制输入证据**，分别执行 Id/Iq 电气 RL、速度一阶模型、位置环内层速度模型的辨识及 PI 设计，然后将物理 PI 候选通过适配层变换为可试用参数、读回检查、逐轴实测评分并在不改善时回滚。以上流程使用**模拟设备**，不是对 M9 真实硬件已完成整定的证据。
+
+芯片无关数据接入：`adapters/streaming.py` 定义 `SampleBatch` / `SignalSpec`；`adapters/bridge.py` 提供 `StreamingMotorBridge`，把已经实现 `StreamingBackend` 协议的底层设备后端转成算法层 `Trace`，并验证样本时钟、丢帧率、测试 ID 和指令生效时刻。真实后端应在 MCU 安全状态下负责 `prepare/start/read/stop`、PI 写入读回和安全停止，禁止只在 PC 上伪造硬件保障。
+
+统一结果：`piauto.reporting.TuningSessionReport` 支持 JSON；`trace_csv` 导出时间序列 CSV。自动实验计划：`piauto.v2.planner.choose_cascade` 和 `choose_chirp`。
+
+**部署边界**：V1 和 V2 的软件方法、Mock 端到端测试可用；HPM/TMC 实时通信、PI 定点换算、安全使能/停止实测以及正式宿主上位机集成，依旧需要真实设备代码和硬件验证。逐项见 [开发进度表](开发进度表.md)。
+
+- d/q 独立模式自动整定：`piauto-v2 full-mock --approve --dq independent --max-rounds 1`；依次整定 d 和 q，而不只选择一个轴。共享模式用一个电流阶段，两个轴都必须验证。
