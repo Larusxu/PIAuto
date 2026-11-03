@@ -25,8 +25,23 @@ def main(argv=None):
     bode=sub.add_parser("bode",help="closed-loop frequency response, not stability margin")
     bode.add_argument("--csv",required=True)
     bode.add_argument("--min-coherence",type=float,default=.8)
+    staged=sub.add_parser("staged-mock",help="independent full-cascade mock-only optimization")
+    staged.add_argument("--dq",choices=["shared","independent"],default="shared")
+    staged.add_argument("--approve",action="store_true")
+    staged.add_argument("--max-rounds",type=int,default=2)
     a=p.parse_args(argv)
     try:
+        if a.command=="staged-mock":
+            if not a.approve:raise ValueError("requires --approve for mock auto tuning")
+            from .staged import TuningStage,V2StagedTuner
+            from ..contracts import Experiment,SafetyEnvelope,Loop,DQMode
+            from ..adapters.mock import MockMotorAdapter
+            safety=SafetyEnvelope(5,100,2,6,-10,10)
+            stages=[TuningStage(Experiment(loop=loop,dq_mode=DQMode(a.dq)),safety,a.max_rounds)
+                    for loop in (Loop.CURRENT,Loop.VELOCITY,Loop.POSITION)]
+            result=V2StagedTuner(MockMotorAdapter()).autotune(stages,authorized=True)
+            print(json.dumps(asdict(result),ensure_ascii=False,indent=2,default=str))
+            return 0
         if a.command=="sysid-velocity":
             x=_read(a.csv,("timestamp_s","current_command","speed_actual"))
             model=fit_velocity_plant(x["timestamp_s"],x["current_command"],x["speed_actual"],
